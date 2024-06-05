@@ -1,9 +1,10 @@
 package com.example.pokerogueoffline
 
-import android.Manifest.permission.MANAGE_EXTERNAL_STORAGE
+import android.Manifest
 import android.app.ProgressDialog
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
@@ -12,6 +13,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.util.Base64
 import android.util.Log
 import android.view.KeyEvent
@@ -21,6 +23,7 @@ import android.webkit.DownloadListener
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
@@ -47,7 +50,11 @@ class AndroidInterface(private val context: Context) {
     @JavascriptInterface
     fun downloadFile(fileName: String, mimeType: String?, base64Data: String) {
         try {
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val downloadsDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            } else {
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            }
             val file = File(downloadsDir, fileName)
             val outputStream = FileOutputStream(file)
             val bytes = Base64.decode(base64Data, Base64.DEFAULT)
@@ -118,7 +125,7 @@ class MainActivity : AppCompatActivity() {
         if (currentApiVersion < 30) {
             Toast.makeText(
                 this@MainActivity,
-                "WARNING: Minimum Android version is 11. You are currently using Android ${Build.VERSION.RELEASE}, which is very likely to not work properly.",
+                "WARNING: Recommended minimum Android version is 11. You are currently using Android ${Build.VERSION.RELEASE}, which is very likely to not work properly.",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -127,6 +134,8 @@ class MainActivity : AppCompatActivity() {
         webView.settings.domStorageEnabled = true
         webView.settings.useWideViewPort = true
         webView.settings.loadWithOverviewMode = true
+        webView.settings.allowFileAccess = true
+        webView.settings.mediaPlaybackRequiresUserGesture = false
 
         webView.setDownloadListener(CustomDownloadListener())
 
@@ -215,8 +224,8 @@ class MainActivity : AppCompatActivity() {
         // Set initial focus and highlight the first button
         focusedButtonIndex = null
 
-        checkGameFiles()
         requestPermissions()
+        checkGameFiles()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -254,9 +263,57 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun requestPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) {
+                // Permission granted
+            } else {
+                // Request permission
+                try {
+                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                    intent.addCategory("android.intent.category.DEFAULT")
+                    intent.data = Uri.parse(String.format("package:%s", applicationContext.packageName))
+                    startActivityForResult(intent, PERMISSIONS_REQUEST_CODE)
+                } catch (e: Exception) {
+                    val intent = Intent()
+                    intent.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+                    startActivityForResult(intent, PERMISSIONS_REQUEST_CODE)
+                }
+            }
+        } else {
+            // Below Android 11
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE),
+                PERMISSIONS_REQUEST_CODE
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PERMISSIONS_REQUEST_CODE) {
+            if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                // Permission granted
+            } else {
+                // Permission denied
+                Toast.makeText(this, "Storage permission is required for this app to download offline files", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
+        if (requestCode == PERMISSIONS_REQUEST_CODE) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (Environment.isExternalStorageManager()) {
+                    // Permission granted
+                } else {
+                    // Permission denied
+                    Toast.makeText(this, "Manage all files access is required for this app to download offline files", Toast.LENGTH_LONG).show()
+                }
+            }
+        } else if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
                 val result = data?.data?.let { arrayOf(it) }
                 mFilePathCallback?.onReceiveValue(result)
@@ -284,11 +341,6 @@ class MainActivity : AppCompatActivity() {
                         or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                         or View.SYSTEM_UI_FLAG_FULLSCREEN
                 )
-    }
-
-    private fun requestPermissions() {
-        ActivityCompat.requestPermissions(this,
-            arrayOf(MANAGE_EXTERNAL_STORAGE), PERMISSIONS_REQUEST_CODE)
     }
 
     private fun convertBlobToFile(blobUrl: String, fileName: String, mimeType: String?) {
@@ -389,8 +441,8 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         val connection = URL(artifactUrl).openConnection().apply {
-                            connectTimeout = 3000 // Set connection timeout
-                            readTimeout = 3000 // Set read timeout
+                            connectTimeout = 10000 // Set connection timeout
+                            readTimeout = 10000 // Set read timeout
                         }
 
                         connection.getInputStream().use { inputStream ->
