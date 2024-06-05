@@ -121,15 +121,6 @@ class MainActivity : AppCompatActivity() {
         playOnlineButton = findViewById(R.id.playOnlineButton)
         startScreenLayout = findViewById(R.id.startScreenLayout)
 
-        val currentApiVersion = Build.VERSION.SDK_INT
-        if (currentApiVersion < 30) {
-            Toast.makeText(
-                this@MainActivity,
-                "WARNING: Recommended minimum Android version is 11. You are currently using Android ${Build.VERSION.RELEASE}, which is very likely to not work properly.",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.settings.useWideViewPort = true
