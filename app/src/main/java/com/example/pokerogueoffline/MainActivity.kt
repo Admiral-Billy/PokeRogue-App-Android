@@ -50,11 +50,7 @@ class AndroidInterface(private val context: Context) {
     @JavascriptInterface
     fun downloadFile(fileName: String, mimeType: String?, base64Data: String) {
         try {
-            val downloadsDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            } else {
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            }
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val file = File(downloadsDir, fileName)
             val outputStream = FileOutputStream(file)
             val bytes = Base64.decode(base64Data, Base64.DEFAULT)
