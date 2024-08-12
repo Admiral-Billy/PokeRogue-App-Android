@@ -150,6 +150,14 @@ class MainActivity : AppCompatActivity() {
             """,
                     null
                 )
+                view?.evaluateJavascript("setTimeout(() => {\n" +
+                            "\t\t\tvar tncLinks = document.getElementById('tnc-links');\n" +
+                            "\t\t\tif (tncLinks) {\n" +
+                            "\t\t\t\ttncLinks.remove();\n" +
+                            "\t\t\t}\n" +
+                            "\t\t}, 30); // Adjust the timeout as needed",
+                    null
+                )
             }
         }
 
@@ -736,6 +744,8 @@ class MainActivity : AppCompatActivity() {
         // Pause the WebView when the app goes into the background
         isWebViewPaused = true
         webView.onPause()
+        webView.loadUrl("javascript:this.Phaser.Display.Canvas.CanvasPool.pool[1].parent.scene.inputController.loseFocus()");
+        webView.loadUrl("javascript:this.Phaser.Display.Canvas.CanvasPool.pool[1].parent.scene.pauseBgm()");
     }
 
     override fun onResume() {
@@ -744,6 +754,7 @@ class MainActivity : AppCompatActivity() {
         if (isWebViewPaused) {
             webView.onResume()
             isWebViewPaused = false
+        	webView.loadUrl("javascript:this.Phaser.Display.Canvas.CanvasPool.pool[1].parent.scene.resumeBgm()");
         }
     }
 
