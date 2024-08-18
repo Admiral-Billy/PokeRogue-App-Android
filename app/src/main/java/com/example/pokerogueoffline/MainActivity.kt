@@ -158,6 +158,7 @@ class MainActivity : AppCompatActivity() {
                             "\t\t}, 30); // Adjust the timeout as needed",
                     null
                 )
+
             }
         }
 
@@ -557,7 +558,14 @@ class MainActivity : AppCompatActivity() {
                 val file = File(gameDir, uri)
                 return try {
                     val inputStream = FileInputStream(file)
-                    newChunkedResponse(Response.Status.OK, getMimeTypeForFile(uri), inputStream)
+                    if (file.extension != "json")
+                    {
+                        newChunkedResponse(Response.Status.OK, getMimeTypeForFile(uri), inputStream)
+                    }
+                    else
+                    {
+                        newChunkedResponse(Response.Status.OK, "application/json", inputStream)
+                    }
                 } catch (e: IOException) {
                     Log.e("GameServer", "Failed to open file: ${file.absolutePath}", e)
                     newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found")
@@ -565,6 +573,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
         server?.start()
+
+
 
         runOnUiThread {
             webView.loadUrl("http://localhost:8000/index.html")
@@ -744,7 +754,7 @@ class MainActivity : AppCompatActivity() {
         // Pause the WebView when the app goes into the background
         isWebViewPaused = true
         webView.onPause()
-        webView.loadUrl("javascript:this.Phaser.Display.Canvas.CanvasPool.pool[1].parent.scene.inputController.loseFocus()");
+        // webView.loadUrl("javascript:this.Phaser.Display.Canvas.CanvasPool.pool[1].parent.scene.inputController.loseFocus()");
         webView.loadUrl("javascript:this.Phaser.Display.Canvas.CanvasPool.pool[1].parent.scene.pauseBgm()");
     }
 
