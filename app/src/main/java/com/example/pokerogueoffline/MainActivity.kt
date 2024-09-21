@@ -142,10 +142,9 @@ class MainActivity : AppCompatActivity() {
                 var scaleX = webViewWidth / gameWidth;
                 var scaleY = webViewHeight / gameHeight;
                 var scale = Math.min(scaleX, scaleY);
-                gameContainer.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+                gameContainer.style.transform = 'scale(' + scale + ')';
                 gameContainer.style.position = 'absolute';
-                gameContainer.style.left = '50%';
-                gameContainer.style.top = '50%';
+                gameContainer.style.transformOrigin = 'left top';
             })();
             """,
                     null
@@ -252,7 +251,8 @@ class MainActivity : AppCompatActivity() {
             var scaleX = webViewWidth / gameWidth;
             var scaleY = webViewHeight / gameHeight;
             var scale = Math.min(scaleX, scaleY);
-            gameContainer.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+            gameContainer.style.transform = 'scale(' + scale + ')';
+            gameContainer.style.transformOrigin = 'left top';
         })();
         """,
             null
