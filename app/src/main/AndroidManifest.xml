@@ -17,7 +17,8 @@
         android:roundIcon="@drawable/app_icon2"
         android:supportsRtl="true"
         android:theme="@style/Theme.PokeRogueOffline"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true">
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
