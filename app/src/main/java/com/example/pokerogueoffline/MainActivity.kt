@@ -26,6 +26,9 @@ import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.app.Presentation
+import android.hardware.display.DisplayManager
+import android.view.Display
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -75,8 +78,22 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun receiveBattleData(payload: String) {
             runOnUiThread {
-                battleDataText.text = payload
+                consolePresentation?.updateText(payload)
             }
+        }
+    }
+
+    inner class ConsolePresentation(context: Context, display: Display) : Presentation(context, display) {
+        private lateinit var battleDataText: TextView
+
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+            setContentView(R.layout.presentation_console)
+            battleDataText = findViewById(R.id.battleDataText)
+        }
+
+        fun updateText(payload: String) {
+            battleDataText.text = payload
         }
     }
 
@@ -99,7 +116,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var playButton: Button
     private lateinit var playOnlineButton: Button
     private lateinit var startScreenLayout: LinearLayout
-    private lateinit var battleDataText: TextView
+
+    private var consolePresentation: ConsolePresentation? = null
 
     private var focusedButtonIndex: Int? = null
     private lateinit var buttons: Array<Button>
@@ -125,7 +143,17 @@ class MainActivity : AppCompatActivity() {
         playButton = findViewById(R.id.playButton)
         playOnlineButton = findViewById(R.id.playOnlineButton)
         startScreenLayout = findViewById(R.id.startScreenLayout)
-        battleDataText = findViewById(R.id.battleDataText)
+
+        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        val displays = displayManager.displays
+
+        for (display in displays) {
+            if (display.displayId != Display.DEFAULT_DISPLAY) {
+                consolePresentation = ConsolePresentation(this, display)
+                consolePresentation?.show()
+                break
+            }
+        }
 
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
