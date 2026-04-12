@@ -28,6 +28,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -45,33 +46,40 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.zip.ZipFile
 
+class MainActivity : AppCompatActivity() {
 
-class AndroidInterface(private val context: Context) {
-    @JavascriptInterface
-    fun downloadFile(fileName: String, mimeType: String?, base64Data: String) {
-        try {
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val file = File(downloadsDir, fileName)
-            val outputStream = FileOutputStream(file)
-            val bytes = Base64.decode(base64Data, Base64.DEFAULT)
-            outputStream.write(bytes)
-            outputStream.close()
+    inner class AndroidInterface {
+        @JavascriptInterface
+        fun downloadFile(fileName: String, mimeType: String?, base64Data: String) {
+            try {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(downloadsDir, fileName)
+                val outputStream = FileOutputStream(file)
+                val bytes = Base64.decode(base64Data, Base64.DEFAULT)
+                outputStream.write(bytes)
+                outputStream.close()
 
-            // Show a toast or notification to indicate successful download
-            Handler(Looper.getMainLooper()).post {
-                Toast.makeText(context, "File downloaded to Downloads folder", Toast.LENGTH_SHORT).show()
+                // Show a toast or notification to indicate successful download
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(this@MainActivity, "File downloaded to Downloads folder", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Show a toast or notification to indicate download failure
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(this@MainActivity, "File download failed", Toast.LENGTH_SHORT).show()
+                }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            // Show a toast or notification to indicate download failure
-            Handler(Looper.getMainLooper()).post {
-                Toast.makeText(context, "File download failed", Toast.LENGTH_SHORT).show()
+        }
+
+        @JavascriptInterface
+        fun receiveBattleData(payload: String) {
+            runOnUiThread {
+                battleDataText.text = payload
             }
         }
     }
-}
 
-class MainActivity : AppCompatActivity() {
     private inner class CustomDownloadListener : DownloadListener {
         override fun onDownloadStart(url: String?, userAgent: String?, contentDisposition: String?, mimetype: String?, contentLength: Long) {
             if (url?.startsWith("blob:") == true) {
@@ -91,6 +99,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var playButton: Button
     private lateinit var playOnlineButton: Button
     private lateinit var startScreenLayout: LinearLayout
+    private lateinit var battleDataText: TextView
 
     private var focusedButtonIndex: Int? = null
     private lateinit var buttons: Array<Button>
@@ -116,6 +125,7 @@ class MainActivity : AppCompatActivity() {
         playButton = findViewById(R.id.playButton)
         playOnlineButton = findViewById(R.id.playOnlineButton)
         startScreenLayout = findViewById(R.id.startScreenLayout)
+        battleDataText = findViewById(R.id.battleDataText)
 
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
@@ -126,7 +136,7 @@ class MainActivity : AppCompatActivity() {
 
         webView.setDownloadListener(CustomDownloadListener())
 
-        webView.addJavascriptInterface(AndroidInterface(this), "Android")
+        webView.addJavascriptInterface(AndroidInterface(), "Android")
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
