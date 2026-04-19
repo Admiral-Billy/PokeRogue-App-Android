@@ -265,14 +265,10 @@
                          // User explicitly confirms BACK button
                          window.globalScene.ui.playSelect();
                          this._customCursor = null; // Clear cursor state when exiting
-                         // Trigger global scene UI to process cancel directly,
-                         // bypassing the current fight handler's strict cursor bounds.
-                         // Wrap in setTimeout to ensure the current synchronous input pass
-                         // (pressing Action/4) finishes evaluating before we force a Cancel.
+
+                         // Explicity transition the UI state back to COMMAND Mode, bypassing processInput propagation issues
                          if (window.globalScene && window.globalScene.ui) {
-                             setTimeout(() => {
-                                 window.globalScene.ui.processInput(6); // 6 is Cancel/Back internally for UI
-                             }, 20);
+                             window.globalScene.ui.setMode(2 /* UiMode.COMMAND */, this.fieldIndex);
                              return true;
                          }
                          return originalFightProcessInput.call(this, 6); // Fallback
