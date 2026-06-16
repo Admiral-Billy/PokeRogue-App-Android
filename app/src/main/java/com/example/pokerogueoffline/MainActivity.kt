@@ -18,6 +18,7 @@ import android.util.Base64
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewTreeObserver
 import android.webkit.CookieManager
 import android.webkit.DownloadListener
 import android.webkit.JavascriptInterface
@@ -133,28 +134,14 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
                 view?.evaluateJavascript(
                     """
-            (function() {
-                var gameContainer = document.getElementById('app');
-                var webViewWidth = document.documentElement.clientWidth;
-                var webViewHeight = document.documentElement.clientHeight;
-                var gameWidth = gameContainer.offsetWidth;
-                var gameHeight = gameContainer.offsetHeight;
-                var scaleX = webViewWidth / gameWidth;
-                var scaleY = webViewHeight / gameHeight;
-                var scale = Math.min(scaleX, scaleY);
-                gameContainer.style.transform = 'scale(' + scale + ')';
-                gameContainer.style.position = 'absolute';
-                gameContainer.style.transformOrigin = 'left top';
-            })();
-            """,
-                    null
-                )
-                view?.evaluateJavascript("setTimeout(() => {\n" +
-                            "\t\t\tvar tncLinks = document.getElementById('tnc-links');\n" +
-                            "\t\t\tif (tncLinks) {\n" +
-                            "\t\t\t\ttncLinks.remove();\n" +
-                            "\t\t\t}\n" +
-                            "\t\t}, 30); // Adjust the timeout as needed",
+                    (function() {
+                        var s = document.createElement('style');
+                        s.textContent = 'canvas{position:absolute!important;left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important}';
+                        document.head.appendChild(s);
+                        var el = document.getElementById('tnc-links');
+                        if (el) el.remove();
+                    })();
+                    """.trimIndent(),
                     null
                 )
 
@@ -240,23 +227,47 @@ class MainActivity : AppCompatActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        webView.evaluateJavascript(
-            """
-        (function() {
-            var gameContainer = document.getElementById('app');
-            var webViewWidth = document.documentElement.clientWidth;
-            var webViewHeight = document.documentElement.clientHeight;
-            var gameWidth = gameContainer.offsetWidth;
-            var gameHeight = gameContainer.offsetHeight;
-            var scaleX = webViewWidth / gameWidth;
-            var scaleY = webViewHeight / gameHeight;
-            var scale = Math.min(scaleX, scaleY);
-            gameContainer.style.transform = 'scale(' + scale + ')';
-            gameContainer.style.transformOrigin = 'left top';
-        })();
-        """,
-            null
-        )
+        webView.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                webView.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                webView.evaluateJavascript(
+                    """
+                    (function() {
+                        try {
+                            var cnv = document.querySelector('canvas');
+                            if (!cnv) return;
+                            var Ph = window.Phaser;
+                            var g = Ph && (Ph.GAMES && Ph.GAMES[0] || Ph.Game && Ph.Game.instances && Ph.Game.instances[0]);
+                            var vw = window.innerWidth, vh = window.innerHeight;
+                            var ar = g && g.scale ? g.scale.baseSize.width / g.scale.baseSize.height : 1920 / 1080;
+                            var cw, ch;
+                            if (vw / vh > ar) { ch = vh; cw = ch * ar; }
+                            else { cw = vw; ch = cw / ar; }
+                            cw = Math.floor(cw); ch = Math.floor(ch);
+                            var app = document.getElementById('app');
+                            if (app) {
+                                app.style.setProperty('width', vw + 'px', 'important');
+                                app.style.setProperty('height', vh + 'px', 'important');
+                                app.style.setProperty('overflow', 'hidden', 'important');
+                            }
+                            if (g && g.scale) {
+                                g.scale.parentSize.setSize(vw, vh);
+                                g.scale.refresh();
+                            }
+                            var _pg = function() {
+                                cnv.style.setProperty('width', cw + 'px', 'important');
+                                cnv.style.setProperty('height', ch + 'px', 'important');
+                            };
+                            _pg();
+                            requestAnimationFrame(_pg);
+                            requestAnimationFrame(function() { requestAnimationFrame(_pg); });
+                        } catch(e) {}
+                    })();
+                    """.trimIndent(),
+                    null
+                )
+            }
+        })
     }
 
     private fun requestPermissions() {
